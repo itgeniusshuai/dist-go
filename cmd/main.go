@@ -82,6 +82,10 @@ func watchNodeEvent(e <-chan zk.Event){
 	// 选主并运行主节点
 	electAndRun()
 	// 重新注册监听
+	_, _,e, err := conn.ExistsW(parentPath)
+	if err != nil{
+		println("zk parent path query error [%s] when rereigister", err.Error())
+	}
 	go watchNodeEvent(e)
 }
 
