@@ -34,6 +34,9 @@ var masterNode string
 // 与zk的连接
 var conn *zk.Conn
 
+// 关闭信号
+var Semaphore = make(chan int,1)
+
 func main() {
 	testGetMinActiveNode()
 }
@@ -70,6 +73,11 @@ func initZK() {
 	// 注册监听
 	go watchNodeEvent(e)
 
+	select {
+	case <-Semaphore:
+		fmt.Println("close process")
+	}
+
 }
 
 func watchNodeEvent(e <-chan zk.Event){
@@ -105,7 +113,7 @@ func electAndRun(){
 	isMaster = masterNode == currentNode
 	// 如果是主且当前不是运行状态，启动
 	if isMaster && !isRunning{
-		doService()
+		go doService()
 	}
 }
 
