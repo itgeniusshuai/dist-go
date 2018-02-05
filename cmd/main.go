@@ -31,6 +31,9 @@ var currentNode string
 // 主节点名称
 var masterNode string
 
+// 与zk的连接
+var conn *zk.Conn
+
 func main() {
 	testGetMinActiveNode()
 }
@@ -42,7 +45,7 @@ func initZK() {
 		fmt.Println("zk connect error")
 		return
 	}
-	isExist, _, err := conn.Exists(parentPath)
+	isExist, _,e, err := conn.ExistsW(parentPath)
 	if err != nil {
 		fmt.Println("zk parent path query error [%s]", err.Error())
 		return
@@ -57,21 +60,38 @@ func initZK() {
 	}
 	// 创建临时有序节点
 	currentNode, err = conn.Create(tmpPath, []byte("client"), 3, zk.WorldACL(zk.PermAll))
-	if err != nil {
-		println("zk create tmp node error %s", err.Error())
-		return
-	}
+
 	// 获取所有列表
-	list, _, err := conn.Children(parentPath)
-	activeList = list
-	if err != nil {
-		println("get active list failed %s", err.Error())
-		return
-	}
+	flushActiveList()
 
 	// 选主并运行主节点
 	electAndRun()
 
+	// 注册监听
+	go watchNodeEvent(e)
+
+}
+
+func watchNodeEvent(e <-chan zk.Event){
+	event:=<-e
+	fmt.Println("path:", event.Path)
+	fmt.Println("type:", event.Type.String())
+	fmt.Println("state:", event.State.String())
+	// 刷新可用节点列表
+	flushActiveList()
+	// 选主并运行主节点
+	electAndRun()
+	// 重新注册监听
+	go watchNodeEvent(e)
+}
+
+func flushActiveList(){
+	list, _, err := conn.Children(parentPath)
+	if err != nil {
+		println("zk create tmp node error %s", err.Error())
+		return
+	}
+	activeList = list
 }
 
 func electAndRun(){
