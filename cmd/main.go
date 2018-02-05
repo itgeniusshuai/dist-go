@@ -61,6 +61,8 @@ func initZK() {
 			return
 		}
 	}
+	// 注册监听
+	go watchNodeEvent(e)
 	// 创建临时有序节点
 	currentNode, err = conn.Create(tmpPath, []byte("client"), 3, zk.WorldACL(zk.PermAll))
 
@@ -69,9 +71,6 @@ func initZK() {
 
 	// 选主并运行主节点
 	electAndRun()
-
-	// 注册监听
-	go watchNodeEvent(e)
 
 	select {
 	case <-Semaphore:
