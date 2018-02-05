@@ -5,6 +5,7 @@ import (
 	"github.com/samuel/go-zookeeper/zk"
 	"sort"
 	"time"
+	"sync"
 )
 
 // 注册中心列表
@@ -36,6 +37,9 @@ var conn *zk.Conn
 
 // 关闭信号
 var Semaphore = make(chan int,1)
+
+// 运行锁，防止程序运行两遍
+var lock sync.Mutex
 
 func main() {
 	testGetMinActiveNode()
@@ -111,8 +115,11 @@ func electAndRun(){
 	// 是否是主
 	isMaster = masterNode == currentNode
 	// 如果是主且当前不是运行状态，启动
+	lock.Lock()
+	defer lock.Unlock()
 	if isMaster && !isRunning{
 		go doService()
+		isRunning = true
 	}
 }
 
