@@ -59,7 +59,7 @@ type Config struct {
 }
 
 func initConfig() {
-	configByte, err := ioutil.ReadFile("cmd\\config.yml")
+	configByte, err := ioutil.ReadFile("etc\\config.yml")
 	if err != nil {
 		fmt.Println(err)
 	}

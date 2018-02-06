@@ -77,15 +77,18 @@ func initConfig() {
 }
 
 func initZK(f func(), configFilePath string) {
-	if configPath != ""{
+	if configFilePath != ""{
 		configPath = configFilePath
 	}
 	//初始zk配置
 	initConfig()
 	// 初始化业务方法
 	sf = f
+
+	// 与zookeeper回调
+	zkCallBack := zk.WithEventCallback(watchZK)
 	//  注册zookeeper
-	c, _, err := zk.Connect(config.ZkList, 15*time.Second)
+	c, _, err := zk.Connect(config.ZkList, 15*time.Second,zkCallBack)
 	conn = c
 	if err != nil {
 		fmt.Println("zk connect error")
@@ -116,6 +119,12 @@ func initZK(f func(), configFilePath string) {
 	// 选主并运行主节点
 	electAndRun()
 
+}
+
+func watchZK(event zk.Event){
+	fmt.Println("path:", event.Path)
+	fmt.Println("type:", event.Type.String())
+	fmt.Println("state:", event.State.String())
 }
 
 func watchNodeEvent(e <-chan zk.Event) {
