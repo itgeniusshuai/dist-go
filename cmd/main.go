@@ -44,16 +44,21 @@ var Semaphore = make(chan int, 1)
 // 运行锁，防止程序运行两遍
 var lock sync.Mutex
 
+// 业务调研方法
+var sf func()
+
 func main() {
-	initZK()
+	initZK(testService)
 	fmt.Println("fsdfds")
-	test.InitZK()
+	test.InitZK(testService)
 	select {
 	case <-Semaphore:
 		fmt.Println("close process")
 	}
 }
-
+func testService(){
+	fmt.Println("test")
+}
 type Config struct {
 	ZkList []string `yaml:"zkList"`
 }
@@ -68,9 +73,11 @@ func initConfig() {
 	fmt.Println("zk list ", config.ZkList)
 }
 
-func initZK() {
+func initZK(f func()) {
 	//初始zk配置
 	initConfig()
+	// 初始化业务方法
+	sf = f
 	//  注册zookeeper
 	c, _, err := zk.Connect(config.ZkList, 15*time.Second)
 	conn = c
@@ -148,6 +155,10 @@ func electAndRun() {
 
 func doService() {
 	fmt.Println(currentNode + " are running")
+	if sf != nil{
+		fmt.Println("exec sf func")
+		sf()
+	}
 }
 
 func getMinActiveNode(activeNodes []string) string {

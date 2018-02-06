@@ -43,9 +43,11 @@ var Semaphore = make(chan int, 1)
 // 运行锁，防止程序运行两遍
 var lock sync.Mutex
 
+var sf func()
+
 func main() {
 	//testGetMinActiveNode()
-	InitZK()
+	//InitZK()
 	select {
 	case <-Semaphore:
 		fmt.Println("close process")
@@ -66,9 +68,11 @@ func initConfig() {
 	fmt.Println("zk list ", config.ZkList)
 }
 
-func InitZK() {
+func InitZK(f func()) {
 	//初始zk配置
 	initConfig()
+	// 业务调用方法
+	sf = f
 	//  注册zookeeper
 	c, _, err := zk.Connect(config.ZkList, 15*time.Second)
 	conn = c
@@ -145,6 +149,7 @@ func electAndRun() {
 
 func doService() {
 	fmt.Println(currentNode + " are running")
+	sf()
 }
 
 func getMinActiveNode(activeNodes []string) string {
