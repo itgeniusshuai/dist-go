@@ -47,8 +47,11 @@ var lock sync.Mutex
 // 业务调研方法
 var sf func()
 
+// 配置文件路径
+var configPath string = "etc/config.yml"
+
 func main() {
-	initZK(testService)
+	initZK(testService,"")
 	fmt.Println("fsdfds")
 	test.InitZK(testService)
 	select {
@@ -64,7 +67,7 @@ type Config struct {
 }
 
 func initConfig() {
-	configByte, err := ioutil.ReadFile("cmd\\config.yml")
+	configByte, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -73,7 +76,10 @@ func initConfig() {
 	fmt.Println("zk list ", config.ZkList)
 }
 
-func initZK(f func()) {
+func initZK(f func(), configFilePath string) {
+	if configPath != ""{
+		configPath = configFilePath
+	}
 	//初始zk配置
 	initConfig()
 	// 初始化业务方法
