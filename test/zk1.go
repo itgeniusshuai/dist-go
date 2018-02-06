@@ -1,4 +1,4 @@
-package main
+package test
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	"sort"
 	"sync"
 	"time"
-	"../test"
 )
 
 // 注册中心列表
@@ -45,9 +44,8 @@ var Semaphore = make(chan int, 1)
 var lock sync.Mutex
 
 func main() {
-	initZK()
-	fmt.Println("fsdfds")
-	test.InitZK()
+	//testGetMinActiveNode()
+	InitZK()
 	select {
 	case <-Semaphore:
 		fmt.Println("close process")
@@ -68,7 +66,7 @@ func initConfig() {
 	fmt.Println("zk list ", config.ZkList)
 }
 
-func initZK() {
+func InitZK() {
 	//初始zk配置
 	initConfig()
 	//  注册zookeeper
@@ -80,19 +78,18 @@ func initZK() {
 	}
 	isExist, _, e, err := conn.ExistsW(parentPath)
 	if err != nil {
-		PrintStr("zk parent path query error [%s]", err.Error())
+		fmt.Println("zk parent path query error [%s]", err.Error())
 		return
 	}
 	if !isExist {
 		// 创建持久化节点
 		_, err := conn.Create(parentPath, []byte("async"), 0, zk.WorldACL(zk.PermAll))
 		if err != nil {
-			PrintStr("zk crate parent [%s] path error [%s]", parentPath, err.Error())
+			println("zk crate parent [%s] path error [%s]", parentPath, err.Error())
 			return
 		}
 	}
 	// 注册监听
-	_, _, e, err = conn.ChildrenW(parentPath)
 	go watchNodeEvent(e)
 	// 创建临时有序节点
 	currentNode, err = conn.Create(tmpPath, []byte("client"), 3, zk.WorldACL(zk.PermAll))
@@ -115,17 +112,17 @@ func watchNodeEvent(e <-chan zk.Event) {
 	// 选主并运行主节点
 	electAndRun()
 	// 重新注册监听
-	_, _, e, err := conn.ChildrenW(parentPath)
+	_, _, e, err := conn.ExistsW(parentPath)
 	if err != nil {
-		PrintStr("zk parent path query error [%s] when rereigister", err.Error())
+		println("zk parent path query error [%s] when rereigister", err.Error())
 	}
-	 go watchNodeEvent(e)
+	go watchNodeEvent(e)
 }
 
 func flushActiveList() {
 	list, _, err := conn.Children(parentPath)
 	if err != nil {
-		PrintStr("zk create tmp node error %s", err.Error())
+		println("zk create tmp node error %s", err.Error())
 		return
 	}
 	activeList = list
@@ -134,7 +131,7 @@ func flushActiveList() {
 func electAndRun() {
 	// 获取最小节点
 	masterNode = getMinActiveNode(activeList)
-	PrintStr("master node is [%s] and currentNode is [%s]", masterNode, currentNode)
+	fmt.Println("master node is ", masterNode,"and current node is ",currentNode)
 	// 是否是主
 	isMaster = parentPath+"/"+masterNode == currentNode
 	// 如果是主且当前不是运行状态，启动
@@ -155,7 +152,7 @@ func getMinActiveNode(activeNodes []string) string {
 	return activeNodes[0]
 }
 
-func PrintStr(str string, opts ...interface{}){
-	tstr := fmt.Sprintf(str,opts...)
-	fmt.Println(tstr)
+func testGetMinActiveNode() {
+	var activeNodes = []string{"app00002", "app00001"}
+	fmt.Println(getMinActiveNode(activeNodes))
 }
