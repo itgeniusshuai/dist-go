@@ -6,10 +6,12 @@ import (
 	"sort"
 	"time"
 	"sync"
+	"io/ioutil"
+	"gopkg.in/yaml.v2"
 )
 
 // 注册中心列表
-var zkList = []string{"192.168.201.219:2181", "192.168.201.220:2181", "192.168.201.218:2181"}
+var config Config
 
 // 同步服务持久化节点
 const parentPath = "/async_app"
@@ -42,12 +44,27 @@ var Semaphore = make(chan int,1)
 var lock sync.Mutex
 
 func main() {
-	testGetMinActiveNode()
+	//testGetMinActiveNode()
+	initConfig()
+}
+
+type Config struct {
+	ZkList []string `yaml:"zkList"`
+}
+
+func initConfig(){
+	configByte,err := ioutil.ReadFile("cmd\\config.yml")
+	if err != nil{
+		fmt.Println(err)
+	}
+	config = Config{}
+	yaml.Unmarshal(configByte, &config)
+	fmt.Println("zk list ",config.ZkList)
 }
 
 func initZK() {
 	//  注册zookeeper
-	conn, _, err := zk.Connect(zkList, 15*time.Second)
+	conn, _, err := zk.Connect(config.ZkList, 15*time.Second)
 	if err != nil {
 		fmt.Println("zk connect error")
 		return
