@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 	"../test"
+	"pkg/errors"
 )
 
 // 注册中心列表
@@ -44,14 +45,17 @@ var Semaphore = make(chan int, 1)
 // 运行锁，防止程序运行两遍
 var lock sync.Mutex
 
-// 业务调研方法
-var sf func()
+// 业务开始方法
+var sfStartFunc func()
+
+// 业务结束方法
+var sfEndFunc func()
 
 // 配置文件路径
 var configPath string = "etc/config.yml"
 
 func main() {
-	initZK(testService,"")
+	initZK(testService,nil,"")
 	fmt.Println("fsdfds")
 	test.InitZK(testService)
 	select {
@@ -76,14 +80,15 @@ func initConfig() {
 	fmt.Println("zk list ", config.ZkList)
 }
 
-func initZK(f func(), configFilePath string) {
+func initZK(fStartFunc func(), fEndFunc func(), configFilePath string) {
 	if configFilePath != ""{
 		configPath = configFilePath
 	}
 	//初始zk配置
 	initConfig()
 	// 初始化业务方法
-	sf = f
+	sfStartFunc = fStartFunc
+	sfEndFunc = fEndFunc
 
 	// 与zookeeper回调
 	zkCallBack := zk.WithEventCallback(watchZK)
@@ -92,27 +97,31 @@ func initZK(f func(), configFilePath string) {
 	conn = c
 	if err != nil {
 		fmt.Println("zk connect error")
-		return
+		panic(errors.New("can't connect zk cluster"))
 	}
 	isExist, _, e, err := conn.ExistsW(parentPath)
 	if err != nil {
 		PrintStr("zk parent path query error [%s]", err.Error())
-		return
+		panic(errors.New("can't query zk nodes"))
 	}
 	if !isExist {
 		// 创建持久化节点
 		_, err := conn.Create(parentPath, []byte("async"), 0, zk.WorldACL(zk.PermAll))
 		if err != nil {
 			PrintStr("zk crate parent [%s] path error [%s]", parentPath, err.Error())
-			return
+			panic(errors.New("can't create zk persistent node"))
 		}
 	}
 	// 注册监听
 	_, _, e, err = conn.ChildrenW(parentPath)
 	go watchNodeEvent(e)
+	fmt.Println("register node event watching")
 	// 创建临时有序节点
 	currentNode, err = conn.Create(tmpPath, []byte("client"), 3, zk.WorldACL(zk.PermAll))
-
+	if err != nil{
+		PrintStr("zk crate tmp node and parent path is [%s] error [%s]", parentPath, err.Error())
+		panic(errors.New("can't create zk tmp node"))
+	}
 	// 获取所有列表
 	flushActiveList()
 
@@ -122,20 +131,27 @@ func initZK(f func(), configFilePath string) {
 }
 
 func watchZK(event zk.Event){
-	fmt.Println("path:", event.Path)
-	fmt.Println("type:", event.Type.String())
-	fmt.Println("state:", event.State.String())
+	fmt.Println("zk path:", event.Path)
+	fmt.Println("zk type:", event.Type.String())
+	fmt.Println("zk state:", event.State.String())
+	state := event.State.String();
+	eventType := event.Type.String();
+	if "EventSession" == eventType && "StateDisconnected" == state{
+		stopService()
+	}
 }
 
 func watchNodeEvent(e <-chan zk.Event) {
 	event := <-e
-	fmt.Println("path:", event.Path)
-	fmt.Println("type:", event.Type.String())
-	fmt.Println("state:", event.State.String())
-	// 刷新可用节点列表
-	flushActiveList()
-	// 选主并运行主节点
-	electAndRun()
+	fmt.Println("node path:", event.Path)
+	fmt.Println("node type:", event.Type.String())
+	fmt.Println("node state:", event.State.String())
+	if "EventNodeChildrenChanged" == event.State.String(){
+		// 刷新可用节点列表
+		flushActiveList()
+		// 选主并运行主节点
+		electAndRun()
+	}
 	// 重新注册监听
 	_, _, e, err := conn.ChildrenW(parentPath)
 	if err != nil {
@@ -148,7 +164,6 @@ func flushActiveList() {
 	list, _, err := conn.Children(parentPath)
 	if err != nil {
 		PrintStr("zk create tmp node error %s", err.Error())
-		return
 	}
 	activeList = list
 }
@@ -170,13 +185,29 @@ func electAndRun() {
 
 func doService() {
 	fmt.Println(currentNode + " are running")
-	if sf != nil{
+	if sfStartFunc != nil{
 		fmt.Println("exec sf func")
-		sf()
+		sfStartFunc()
+	}
+}
+
+func stopService(){
+	fmt.Println(currentNode + "will stop")
+	lock.Lock()
+	defer lock.Unlock()
+	isMaster = false
+	activeList = nil
+	isRunning = false
+	if sfEndFunc != nil{
+		fmt.Println("exce stop func")
+		sfEndFunc()
 	}
 }
 
 func getMinActiveNode(activeNodes []string) string {
+	if activeNodes == nil || len(activeNodes) == 0 {
+		return ""
+	}
 	sort.Strings(activeNodes)
 	return activeNodes[0]
 }
