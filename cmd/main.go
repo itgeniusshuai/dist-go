@@ -166,6 +166,7 @@ func flushActiveList() {
 		PrintStr("zk create tmp node error %s", err.Error())
 	}
 	activeList = list
+	fmt.Println(fmt.Sprintf("active nodes is [%v]",activeList))
 }
 
 func electAndRun() {
