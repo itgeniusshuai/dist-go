@@ -54,8 +54,12 @@ var sfEndFunc func()
 // 配置文件路径
 var configPath string = "etc/config.yml"
 
+func stop(){
+	panic(errors.New("stop world"))
+}
+
 func main() {
-	initZK(testService,nil,"")
+	initZK(testService,stop,"")
 	fmt.Println("fsdfds")
 	test.InitZK(testService)
 	tick := time.NewTicker(time.Second*5)
