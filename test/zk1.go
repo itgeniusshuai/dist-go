@@ -47,7 +47,7 @@ var sf func()
 
 func main() {
 	//testGetMinActiveNode()
-	//InitZK()
+	InitZK(nil)
 	select {
 	case <-Semaphore:
 		fmt.Println("close process")
@@ -124,6 +124,8 @@ func watchNodeEvent(e <-chan zk.Event) {
 }
 
 func flushActiveList() {
+	lock.Lock()
+	defer lock.Unlock()
 	list, _, err := conn.Children(parentPath)
 	if err != nil {
 		println("zk create tmp node error %s", err.Error())
@@ -133,14 +135,14 @@ func flushActiveList() {
 }
 
 func electAndRun() {
+	lock.Lock()
+	defer lock.Unlock()
 	// 获取最小节点
 	masterNode = getMinActiveNode(activeList)
 	fmt.Println("master node is ", masterNode,"and current node is ",currentNode)
 	// 是否是主
 	isMaster = parentPath+"/"+masterNode == currentNode
 	// 如果是主且当前不是运行状态，启动
-	lock.Lock()
-	defer lock.Unlock()
 	if isMaster && !isRunning {
 		go doService()
 		isRunning = true
