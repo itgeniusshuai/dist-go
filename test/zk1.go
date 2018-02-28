@@ -37,22 +37,13 @@ var masterNode string
 // 与zk的连接
 var conn *zk.Conn
 
-// 关闭信号
-var Semaphore = make(chan int, 1)
+
 
 // 运行锁，防止程序运行两遍
 var lock sync.Mutex
 
 var sf func()
 
-func main() {
-	//testGetMinActiveNode()
-	InitZK(nil)
-	select {
-	case <-Semaphore:
-		fmt.Println("close process")
-	}
-}
 
 type Config struct {
 	ZkList []string `yaml:"zkList"`
@@ -111,10 +102,12 @@ func watchNodeEvent(e <-chan zk.Event) {
 	fmt.Println("path:", event.Path)
 	fmt.Println("type:", event.Type.String())
 	fmt.Println("state:", event.State.String())
-	// 刷新可用节点列表
-	flushActiveList()
-	// 选主并运行主节点
-	electAndRun()
+	if "EventNodeChildrenChanged" == event.Type.String(){
+		// 刷新可用节点列表
+		flushActiveList()
+		// 选主并运行主节点
+		electAndRun()
+	}
 	// 重新注册监听
 	_, _, e, err := conn.ExistsW(parentPath)
 	if err != nil {
@@ -128,7 +121,7 @@ func flushActiveList() {
 	defer lock.Unlock()
 	list, _, err := conn.Children(parentPath)
 	if err != nil {
-		println("zk create tmp node error %s", err.Error())
+		println("zk lo tmp node error %s", err.Error())
 		return
 	}
 	activeList = list
