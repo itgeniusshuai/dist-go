@@ -3,8 +3,6 @@ package dist
 import (
 	"fmt"
 	"github.com/samuel/go-zookeeper/zk"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
 	"sort"
 	"sync"
 	"time"
@@ -12,7 +10,7 @@ import (
 )
 
 // 注册中心列表
-var config Config
+var zkList []string
 
 // 同步服务持久化节点
 const parentPath = "/async_app"
@@ -47,30 +45,10 @@ var sfStartFunc func()
 // 业务结束方法
 var sfEndFunc func()
 
-// 配置文件路径
-var configPath string = "etc/config.yml"
 
-
-type Config struct {
-	ZkList []string `yaml:"zkList"`
-}
-
-func initConfig() {
-	configByte, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		fmt.Println(err)
-	}
-	config = Config{}
-	yaml.Unmarshal(configByte, &config)
-	fmt.Println("zk list ", config.ZkList)
-}
-
-func InitZK(fStartFunc func(), fEndFunc func(), configFilePath string) {
-	if configFilePath != ""{
-		configPath = configFilePath
-	}
+func InitZK(fStartFunc func(), fEndFunc func(), zkServerList []string) {
 	//初始zk配置
-	initConfig()
+	zkList = zkServerList
 	// 初始化业务方法
 	sfStartFunc = fStartFunc
 	sfEndFunc = fEndFunc
@@ -97,7 +75,7 @@ func connectZKAndListen(){
 	// 与zookeeper回调
 	zkCallBack := zk.WithEventCallback(watchZK)
 	//  注册zookeeper
-	c, _, err := zk.Connect(config.ZkList, 15*time.Second,zkCallBack)
+	c, _, err := zk.Connect(zkList, 15*time.Second,zkCallBack)
 	conn = c
 	if err != nil {
 		fmt.Println("zk connect error")

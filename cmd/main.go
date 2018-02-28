@@ -11,7 +11,8 @@ import (
 var Semaphore = make(chan int, 1)
 
 func main() {
-	dist.InitZK(testService,stop,"")
+	zkList := []string{"192.168.201.219:2181","192.168.201.220:2181","192.168.201.218:2181"}
+	dist.InitZK(testService,stop,zkList)
 	fmt.Println("fsdfds")
 	test.InitZK(testService)
 	select {

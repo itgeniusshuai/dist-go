@@ -3,15 +3,13 @@ package test
 import (
 	"fmt"
 	"github.com/samuel/go-zookeeper/zk"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
 	"sort"
 	"sync"
 	"time"
 )
 
 // 注册中心列表
-var config Config
+var zkList []string = []string{"192.168.201.219:2181","192.168.201.220:2181","192.168.201.218:2181"}
 
 // 同步服务持久化节点
 const parentPath = "/async_app"
@@ -45,27 +43,12 @@ var lock sync.Mutex
 var sf func()
 
 
-type Config struct {
-	ZkList []string `yaml:"zkList"`
-}
-
-func initConfig() {
-	configByte, err := ioutil.ReadFile("etc\\config.yml")
-	if err != nil {
-		fmt.Println(err)
-	}
-	config = Config{}
-	yaml.Unmarshal(configByte, &config)
-	fmt.Println("zk list ", config.ZkList)
-}
 
 func InitZK(f func()) {
-	//初始zk配置
-	initConfig()
 	// 业务调用方法
 	sf = f
 	//  注册zookeeper
-	c, _, err := zk.Connect(config.ZkList, 15*time.Second)
+	c, _, err := zk.Connect(zkList, 15*time.Second)
 	conn = c
 	if err != nil {
 		fmt.Println("zk connect error")
