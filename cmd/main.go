@@ -58,6 +58,12 @@ func main() {
 	initZK(testService,nil,"")
 	fmt.Println("fsdfds")
 	test.InitZK(testService)
+	tick := time.NewTicker(time.Second*5)
+	ticks := tick.C
+	for _ = range ticks {
+		list, _, _ := conn.Children(parentPath)
+		PrintStr("tick active list [%v]",list)
+	}
 	select {
 	case <-Semaphore:
 		fmt.Println("close process")
@@ -165,7 +171,7 @@ func watchNodeEvent(e <-chan zk.Event) {
 	 go watchNodeEvent(e)
 }
 
-// 更新可用节点，如果长时间失联，zk一直心跳，当前节点再重新连接上的时候可能会发生变化
+// 更新可用节点，如果长时间失联，zk一直心跳，当前节点再重新连接上,之前的节点已经不在
 func flushActiveList() {
 	lock.Lock()
 	defer lock.Unlock()
