@@ -96,6 +96,25 @@ func initZK(fStartFunc func(), fEndFunc func(), configFilePath string) {
 	sfStartFunc = fStartFunc
 	sfEndFunc = fEndFunc
 
+	// 连接并监听
+	connectZKAndListen()
+
+	// 创建持久化节点
+	createPersistParentNode()
+
+	// 创建临时节点并注册监听
+	createAndListenTmpNode()
+
+	// 获取所有列表
+	flushActiveList()
+
+	// 选主并运行主节点
+	electAndRun()
+
+}
+
+// 连接并监听zookeeper
+func connectZKAndListen(){
 	// 与zookeeper回调
 	zkCallBack := zk.WithEventCallback(watchZK)
 	//  注册zookeeper
@@ -105,7 +124,11 @@ func initZK(fStartFunc func(), fEndFunc func(), configFilePath string) {
 		fmt.Println("zk connect error")
 		panic(errors.New("can't connect zk cluster"))
 	}
-	isExist, _, e, err := conn.ExistsW(parentPath)
+}
+
+// 创建持久化父节点
+func createPersistParentNode(){
+	isExist, _, _, err := conn.ExistsW(parentPath)
 	if err != nil {
 		PrintStr("zk parent path query error [%s]", err.Error())
 		panic(errors.New("can't query zk nodes"))
@@ -118,8 +141,12 @@ func initZK(fStartFunc func(), fEndFunc func(), configFilePath string) {
 			panic(errors.New("can't create zk persistent node"))
 		}
 	}
+}
+
+// 创建临时节点并注册监听
+func createAndListenTmpNode(){
 	// 注册监听
-	_, _, e, err = conn.ChildrenW(parentPath)
+	_, _, e, err := conn.ChildrenW(parentPath)
 	go watchNodeEvent(e)
 	fmt.Println("register node event watching")
 	// 创建临时有序节点
@@ -128,12 +155,6 @@ func initZK(fStartFunc func(), fEndFunc func(), configFilePath string) {
 		PrintStr("zk crate tmp node and parent path is [%s] error [%s]", parentPath, err.Error())
 		panic(errors.New("can't create zk tmp node"))
 	}
-	// 获取所有列表
-	flushActiveList()
-
-	// 选主并运行主节点
-	electAndRun()
-
 }
 
 // 失联后停止服务,全局监听内不能使用conn的任何方法，否则报死锁
