@@ -130,6 +130,7 @@ func initZK(fStartFunc func(), fEndFunc func(), configFilePath string) {
 
 }
 
+// 失联后停止服务
 func watchZK(event zk.Event){
 	fmt.Println("zk path:", event.Path)
 	fmt.Println("zk type:", event.Type.String())
@@ -141,6 +142,7 @@ func watchZK(event zk.Event){
 	}
 }
 
+//  如果节点发生变化，更新可用列表，重新选举，如果当期节点正在运行，能收到该事件说明该节点肯定没死掉
 func watchNodeEvent(e <-chan zk.Event) {
 	event := <-e
 	fmt.Println("node path:", event.Path)
@@ -160,6 +162,7 @@ func watchNodeEvent(e <-chan zk.Event) {
 	 go watchNodeEvent(e)
 }
 
+// 更新可用节点
 func flushActiveList() {
 	lock.Lock()
 	defer lock.Unlock()
@@ -171,6 +174,7 @@ func flushActiveList() {
 	fmt.Println(fmt.Sprintf("active nodes is [%v]",activeList))
 }
 
+// 选举并运行要启动的服务
 func electAndRun() {
 	lock.Lock()
 	defer lock.Unlock()
@@ -186,6 +190,7 @@ func electAndRun() {
 	}
 }
 
+// 启动服务
 func doService() {
 	fmt.Println(currentNode + " are running")
 	if sfStartFunc != nil{
@@ -194,6 +199,7 @@ func doService() {
 	}
 }
 
+// 停止服务
 func stopService(){
 	fmt.Println(currentNode + "will stop")
 	lock.Lock()
@@ -207,6 +213,7 @@ func stopService(){
 	}
 }
 
+// 获取最小节点，该节点作为主节点
 func getMinActiveNode(activeNodes []string) string {
 	if activeNodes == nil || len(activeNodes) == 0 {
 		return ""
