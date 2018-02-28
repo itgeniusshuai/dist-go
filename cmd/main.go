@@ -146,7 +146,7 @@ func watchNodeEvent(e <-chan zk.Event) {
 	fmt.Println("node path:", event.Path)
 	fmt.Println("node type:", event.Type.String())
 	fmt.Println("node state:", event.State.String())
-	if "EventNodeChildrenChanged" == event.State.String(){
+	if "EventNodeChildrenChanged" == event.Type.String(){
 		// 刷新可用节点列表
 		flushActiveList()
 		// 选主并运行主节点
@@ -161,6 +161,8 @@ func watchNodeEvent(e <-chan zk.Event) {
 }
 
 func flushActiveList() {
+	lock.Lock()
+	defer lock.Unlock()
 	list, _, err := conn.Children(parentPath)
 	if err != nil {
 		PrintStr("zk create tmp node error %s", err.Error())
@@ -170,14 +172,14 @@ func flushActiveList() {
 }
 
 func electAndRun() {
+	lock.Lock()
+	defer lock.Unlock()
 	// 获取最小节点
 	masterNode = getMinActiveNode(activeList)
 	PrintStr("master node is [%s] and currentNode is [%s]", masterNode, currentNode)
 	// 是否是主
 	isMaster = parentPath+"/"+masterNode == currentNode
 	// 如果是主且当前不是运行状态，启动
-	lock.Lock()
-	defer lock.Unlock()
 	if isMaster && !isRunning {
 		go doService()
 		isRunning = true
