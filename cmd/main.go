@@ -145,6 +145,7 @@ func watchZK(event zk.Event){
 //  如果节点发生变化，更新可用列表， 重新选举，
 //  如果当期节点服务正在运行，能收到该事件说明该节点肯定没死掉，主节点不会发生改变
 //  如果当前节点服务没有运行，收到后可能重新成为主节点，运行服务
+//  唯一发生安全问题的就是该方法，可能同时触发多次
 func watchNodeEvent(e <-chan zk.Event) {
 	event := <-e
 	fmt.Println("node path:", event.Path)
