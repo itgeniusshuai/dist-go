@@ -130,7 +130,7 @@ func initZK(fStartFunc func(), fEndFunc func(), configFilePath string) {
 
 }
 
-// 失联后停止服务
+// 失联后停止服务,全局监听内不能使用conn的任何方法，否则报死锁
 func watchZK(event zk.Event){
 	fmt.Println("zk path:", event.Path)
 	fmt.Println("zk type:", event.Type.String())
@@ -165,7 +165,7 @@ func watchNodeEvent(e <-chan zk.Event) {
 	 go watchNodeEvent(e)
 }
 
-// 更新可用节点
+// 更新可用节点，如果长时间失联，zk一直心跳，当前节点再重新连接上的时候可能会发生变化
 func flushActiveList() {
 	lock.Lock()
 	defer lock.Unlock()
@@ -174,7 +174,8 @@ func flushActiveList() {
 		PrintStr("zk create tmp node error %s", err.Error())
 	}
 	activeList = list
-	fmt.Println(fmt.Sprintf("active nodes is [%v]",activeList))
+	//state := conn.State()
+	fmt.Println(fmt.Sprintf("active nodes is [%v] ",activeList))
 }
 
 // 选举并运行要启动的服务
