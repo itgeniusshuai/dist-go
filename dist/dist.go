@@ -6,7 +6,7 @@ import (
 	"sort"
 	"sync"
 	"time"
-	"pkg/errors"
+	"errors"
 )
 
 // 注册中心列表
