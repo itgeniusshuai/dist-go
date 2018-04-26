@@ -46,7 +46,9 @@ var sfStartFunc func()
 var sfEndFunc func()
 
 
-func InitZK(fStartFunc func(), fEndFunc func(), zkServerList []string) {
+func InitZK(fStartFunc func(), fEndFunc func(), zkServerList []string, name string) {
+	parentPath = parentPath + "_" + name
+	tmpPath = parentPath + "/app"
 	//初始zk配置
 	zkList = zkServerList
 	// 初始化业务方法
